@@ -24,6 +24,30 @@ test.describe('Game Listing and Navigation', () => {
     });
   });
 
+  test('should filter games by multiple categories and publisher', async ({ page }) => {
+    await page.goto('/');
+
+    const allGamesCount = await page.getByTestId('game-card').count();
+    const visibleCards = page.getByTestId('game-card').filter({ visible: true });
+    const resultsStatus = page.getByTestId('filter-results');
+
+    await page.getByRole('checkbox', { name: 'Strategy' }).check();
+    await page.getByRole('checkbox', { name: 'Puzzle' }).check();
+    await page.getByLabel('Publisher').selectOption({ label: 'CodeForge Studios' });
+
+    await expect(visibleCards).toHaveCount(2);
+    await expect(resultsStatus).toHaveText('Showing 2 games.');
+    await expect(visibleCards.getByTestId('game-title')).toHaveText([
+      'Code Puzzle Chronicles',
+      'DevOps Dominion',
+    ]);
+
+    await page.getByTestId('clear-filters').click();
+
+    await expect(visibleCards).toHaveCount(allGamesCount);
+    await expect(resultsStatus).toHaveText(`Showing ${allGamesCount} games.`);
+  });
+
   test('should navigate to correct game details page when clicking on a game', async ({ page }) => {
     let gameId: string | null;
     let gameTitle: string | null;
