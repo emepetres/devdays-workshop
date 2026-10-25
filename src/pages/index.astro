@@ -1,4 +1,5 @@
 ---
+/* Renders the home-page game catalog with build-time data and browser-side controls. */
 import Layout from '../layouts/Layout.astro';
 import GameCard from '../components/GameCard.astro';
 import PageHero from '../components/PageHero.astro';
@@ -52,19 +53,35 @@ const [games, categories, publishers] = await Promise.all([
                 </div>
               </fieldset>
 
-              <div>
-                <label for="publisher-filter" class="mb-3 block font-medium text-slate-100">Publisher</label>
-                <select
-                  id="publisher-filter"
-                  name="publisher"
-                  class="w-full rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 text-slate-100 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  data-testid="publisher-filter"
-                >
-                  <option value="">All publishers</option>
-                  {publishers.map((publisher) => (
-                    <option value={publisher.id}>{publisher.name}</option>
-                  ))}
-                </select>
+              <div class="space-y-5">
+                <div>
+                  <label for="publisher-filter" class="mb-3 block font-medium text-slate-100">Publisher</label>
+                  <select
+                    id="publisher-filter"
+                    name="publisher"
+                    class="w-full rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 text-slate-100 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    data-testid="publisher-filter"
+                  >
+                    <option value="">All publishers</option>
+                    {publishers.map((publisher) => (
+                      <option value={publisher.id}>{publisher.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label for="game-sort" class="mb-3 block font-medium text-slate-100">Sort games</label>
+                  <select
+                    id="game-sort"
+                    name="sort"
+                    class="w-full rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 text-slate-100 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    data-testid="game-sort"
+                  >
+                    <option value="title-asc">Title A–Z</option>
+                    <option value="title-desc">Title Z–A</option>
+                    <option value="rating-desc">Rating: highest first</option>
+                  </select>
+                </div>
               </div>
             </div>
 
@@ -96,12 +113,16 @@ const [games, categories, publishers] = await Promise.all([
 </Layout>
 
 <script>
+  import { sortGames, type GameSortOrder } from '../lib/game-sorting';
+
   const filterForm = document.querySelector<HTMLFormElement>('[data-testid="game-filters"]');
 
   if (filterForm) {
     const gameCards = Array.from(document.querySelectorAll<HTMLElement>('[data-testid="game-card"]'));
+    const gamesGrid = document.querySelector<HTMLElement>('[data-testid="games-grid"]');
     const categoryInputs = Array.from(filterForm.querySelectorAll<HTMLInputElement>('input[name="category"]'));
     const publisherSelect = filterForm.querySelector<HTMLSelectElement>('select[name="publisher"]');
+    const sortSelect = filterForm.querySelector<HTMLSelectElement>('select[name="sort"]');
     const resultsStatus = filterForm.querySelector<HTMLElement>('[data-testid="filter-results"]');
     const noResults = document.querySelector<HTMLElement>('[data-testid="no-filter-results"]');
     const clearButton = filterForm.querySelector<HTMLButtonElement>('[data-testid="clear-filters"]');
@@ -125,6 +146,24 @@ const [games, categories, publishers] = await Promise.all([
         if (isVisible) visibleCount += 1;
       }
 
+      const sortOrder: GameSortOrder =
+        sortSelect?.value === 'title-desc' || sortSelect?.value === 'rating-desc'
+          ? sortSelect.value
+          : 'title-asc';
+      const sortedCards = sortGames(
+        gameCards.map((card) => {
+          const rating = card.dataset.starRating;
+          return {
+            card,
+            title: card.dataset.gameTitle ?? '',
+            starRating: rating === undefined || rating === '' ? null : Number(rating),
+          };
+        }),
+        sortOrder,
+      );
+
+      for (const { card } of sortedCards) gamesGrid?.append(card);
+
       if (resultsStatus) {
         resultsStatus.textContent = `Showing ${visibleCount} ${visibleCount === 1 ? 'game' : 'games'}.`;
       }
@@ -137,5 +176,6 @@ const [games, categories, publishers] = await Promise.all([
       if (publisherSelect) publisherSelect.value = '';
       updateGames();
     });
+    updateGames();
   }
 </script>

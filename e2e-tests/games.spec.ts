@@ -1,3 +1,6 @@
+/**
+ * Verifies game listing, sorting, filtering, and navigation in the built site.
+ */
 import { test, expect, type Response } from '@playwright/test';
 
 test.describe('Game Listing and Navigation', () => {
@@ -46,6 +49,55 @@ test.describe('Game Listing and Navigation', () => {
 
     await expect(visibleCards).toHaveCount(allGamesCount);
     await expect(resultsStatus).toHaveText(`Showing ${allGamesCount} games.`);
+  });
+
+  test('should sort games and preserve sorting while filtering and clearing filters', async ({ page }) => {
+    await page.goto('/');
+
+    const sortSelect = page.getByRole('combobox', { name: 'Sort games' });
+    const gameCards = page.getByTestId('game-card');
+    const gameTitles = page.getByTestId('game-title');
+    const allGamesCount = await gameCards.count();
+
+    await expect(sortSelect).toHaveValue('title-asc');
+
+    await sortSelect.selectOption('title-desc');
+    const descendingTitles = await gameTitles.allTextContents();
+    const expectedDescendingTitles = await page.evaluate((titles) => {
+      const collator = new Intl.Collator(navigator.language, { numeric: true, sensitivity: 'base' });
+      return [...titles].sort((left, right) =>
+        collator.compare(right, left) || (left < right ? 1 : left > right ? -1 : 0),
+      );
+    }, descendingTitles);
+    expect(descendingTitles).toEqual(expectedDescendingTitles);
+
+    await sortSelect.selectOption('rating-desc');
+    const ratings = await gameCards.evaluateAll((cards) =>
+      cards.map((card) => {
+        const rating = card.getAttribute('data-star-rating');
+        return rating === null || rating === '' ? null : Number(rating);
+      }),
+    );
+    expect(ratings).toEqual([...ratings].sort((left, right) => {
+      if (left === null) return right === null ? 0 : 1;
+      if (right === null) return -1;
+      return right - left;
+    }));
+
+    await page.getByRole('checkbox', { name: 'Strategy' }).check();
+    await page.getByRole('checkbox', { name: 'Puzzle' }).check();
+    await page.getByLabel('Publisher').selectOption({ label: 'CodeForge Studios' });
+
+    await expect(gameCards.filter({ visible: true })).toHaveCount(2);
+    await expect(gameTitles.filter({ visible: true })).toHaveText([
+      'Code Puzzle Chronicles',
+      'DevOps Dominion',
+    ]);
+    await expect(sortSelect).toHaveValue('rating-desc');
+
+    await page.getByTestId('clear-filters').click();
+    await expect(gameCards.filter({ visible: true })).toHaveCount(allGamesCount);
+    await expect(sortSelect).toHaveValue('rating-desc');
   });
 
   test('should navigate to correct game details page when clicking on a game', async ({ page }) => {

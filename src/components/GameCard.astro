@@ -1,4 +1,5 @@
 ---
+/* Renders a catalog game card and exposes its catalog fields for filtering and sorting. */
 import type { Game } from '../types/game';
 import Tag from './Tag.astro';
 import ArrowRight from '../assets/icons/arrow-right.svg';
@@ -16,6 +17,7 @@ const { game } = Astro.props;
     data-testid="game-card"
     data-game-id={game.id}
     data-game-title={game.title}
+    data-star-rating={game.starRating ?? ''}
     data-category-id={game.category?.id ?? ''}
     data-publisher-id={game.publisher?.id ?? ''}
 >
