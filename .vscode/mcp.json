@@ -14,6 +14,19 @@
     "astro-docs": {
       "type": "http",
       "url": "https://mcp.docs.astro.build/mcp"
+    },
+    "docling": {
+      "type": "stdio",
+      "command": "docling-mcp-server",
+      "args": [
+        "--transport",
+        "stdio",
+        "conversion",
+        "manipulation"
+      ],
+      "env": {
+        "DOCLING_MCP_CONVERSION_MODE": "local"
+      }
     }
   }
 }
